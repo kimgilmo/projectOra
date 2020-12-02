@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="member">
+	<select id="idCheck" resultType="int">
+		SELECT COUNT(*) FROM MEMBER WHERE ID=#{id}
+	</select>
+	
+	<select id="nickCheck" resultType="int">
+		SELECT COUNT(*) FROM MEMBER WHERE nickName=#{nickName}
+	</select>
+	
+	<select id="phoneNumCheck" resultType="int">
+		SELECT COUNT(*) FROM MEMBER WHERE PHONE=#{phone}
+	</select>
+	
+	<insert id="insertMember">
+		INSERT INTO MEMBER(id,code_value,password,name,nickName,gender,phone,rank_name,regdate) 
+		VALUES(#{id},#{code_value},#{password},#{name},#{nickName},#{gender},#{phone},#{rank_name},sysdate)
+	</insert>
+	
+	<select id="selectMember" resultType="memberVo">
+		SELECT ID, CODE_VALUE,PASSWORD,NAME,NICKNAME,GENDER,PHONE,RANK_NAME,TO_CHAR(REGDATE,'YY.MM.DD HH:MI') AS REGDATE 
+		FROM MEMBER WHERE ID=#{id}
+	</select>
+	<select id="selectMemberId" resultType="memberVo">
+		SELECT ID, CODE_VALUE,PASSWORD,NAME,NICKNAME,GENDER,PHONE,RANK_NAME,TO_CHAR(REGDATE,'YY.MM.DD HH:MI') AS REGDATE 
+		FROM MEMBER WHERE PHONE=#{phone}
+	</select>
+	
+	<select id="selectRank" resultType="rankVo">
+		SELECT * FROM rank WHERE rank_name=#{rank_name}
+	</select>
+	
+	<update id="updateMember">
+		UPDATE MEMBER SET PASSWORD=#{password},NICKNAME=#{nickName},PHONE=#{phone} WHERE ID=#{id}
+	</update>
+	
+	<!-- 포인트 추가 -->
+	<insert id="insertPoint">
+		INSERT INTO POINT(POINT_NO, ID, POINT_GET, POINT_TIME, POINT_CAUSE) 
+		VALUES(POINT_SEQ.NEXTVAL, #{id}, #{point_get}, SYSDATE, #{point_cause})
+	</insert>
+	
+	<update id="updateRank">
+		UPDATE MEMBER SET RANK_NAME=(SELECT RANK_NAME FROM RANK WHERE (SELECT SUM(POINT_GET) FROM POINT WHERE ID=#{id}) BETWEEN MIN_POINT AND MAX_POINT) 
+		WHERE ID=#{id}
+	</update>
+	
+	<update id="updatePwd">
+		UPDATE MEMBER SET PASSWORD=#{password} WHERE ID=#{id}
+	</update>
+</mapper>

@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="review">
+  <select id="selectList" resultType="reviewVo">
+  	<!-- ROW_NUMBER()함수를 써서 'ORDER BY r_no DESC' 후에 ROWNUM이 동작하도록 한다.
+  	현재시간-레코드등록시간 결과값의 정수는 일단위임. 초단위 결과를 반환하기 위해 곱연산함. 결과값이 소수점까지 나오기때문에 INT로 형변환해서 소수점 이하 제거. -->
+	SELECT r2.*, CAST(24*60*60*(SYSDATE-r2.r_regdate) AS INT) date_diff FROM (SELECT ROW_NUMBER() OVER (ORDER BY r_no DESC) row_num, r.* FROM review r 
+	<if test='searchType.equals("id") || searchType.equals("c_no")'>
+		WHERE ${searchType}=#{searchValue}
+	</if>
+	<if test='searchType.equals("r_title") || searchType.equals("r_content")'>
+		<if test="searchMethod == 1">
+			WHERE ${searchType}=#{searchValue}
+		</if>
+		<if test="searchMethod == 2">
+			WHERE ${searchType} like '%'||#{searchValue}||'%'
+		</if>
+	</if>
+	ORDER BY r_no DESC) r2 WHERE row_num BETWEEN #{begin_record} AND #{end_record}
+  </select>
+  
+  <!-- 내 게시물 목록-->
+   <select id="myPageSelectList" resultType="reviewVo">
+    SELECT * FROM review WHERE ID=#{id} ORDER BY r_no DESC
+  </select>
+  <update id="incHit">
+  	UPDATE review SET r_hit=r_hit+1 WHERE r_no=#{r_no}
+  </update>
+  <select id="selectOne" resultType="reviewVo">
+  	SELECT r.*, CAST(24*60*60*(SYSDATE-r_regdate) AS INT) date_diff FROM review r WHERE r_no=#{r_no}
+  </select>
+  <select id="selectListFile" resultType="review_fileVo">
+  	SELECT * FROM review_file WHERE r_no=#{r_no}
+  </select>
+  <select id="selectListRep" resultType="review_repVo">
+  	SELECT r.*, CAST(24*60*60*(SYSDATE-rr_regdate) AS INT) date_diff FROM review_rep r WHERE r_no=#{r_no} ORDER BY rr_ref, rr_step
+  </select>
+  <select id="nextR_no" resultType="java.lang.Integer">
+  	SELECT NVL(MAX(r_no),0)+1 FROM review
+  </select>
+  <insert id="insert">
+  	INSERT INTO review(r_no,c_no,id,r_title,r_content,r_regdate,r_hit) VALUES(#{r_no},#{c_no},#{id},#{r_title},#{r_content},SYSDATE,0)
+  </insert>
+  <insert id="insertFile">
+  	INSERT INTO review_file(rf_no,r_no,rf_name,rf_savename,rf_path,rf_size) VALUES(#{rf_no},#{r_no},#{rf_name},#{rf_savename},#{rf_path},#{rf_size})
+  </insert>
+  <select id="nextRf_no" resultType="java.lang.Integer">
+  	SELECT NVL(MAX(rf_no),0)+1 FROM review_file
+  </select>
+  <select id="countRep" resultType="java.lang.Integer">
+  	SELECT COUNT(*) FROM review_rep WHERE r_no=#{r_no}
+  </select>
+  <delete id="delete">
+  	DELETE FROM review WHERE r_no=#{r_no}
+  </delete>
+  <delete id="deleteFile">
+  	DELETE FROM review_file WHERE r_no=#{r_no}
+  </delete>
+  <delete id="deleteRep">
+  	DELETE FROM review_rep WHERE r_no=#{r_no}
+  </delete>
+  <select id="count" resultType="java.lang.Integer">
+  	SELECT COUNT(*) FROM review 
+  	<if test='searchType.equals("id") || searchType.equals("c_no")'>
+		WHERE ${searchType}=#{searchValue}
+	</if>
+	<if test='searchType.equals("r_title") || searchType.equals("r_content")'>
+		<if test="searchMethod == 1">
+			WHERE ${searchType}=#{searchValue}
+		</if>
+		<if test="searchMethod == 2">
+			WHERE ${searchType} like '%'||#{searchValue}||'%'
+		</if>
+	</if>
+  </select>
+  <select id="nextRr_no" resultType="java.lang.Integer">
+  	SELECT NVL(MAX(rr_no),0)+1 FROM review_rep
+  </select>
+  <select id="nextRr_step" resultType="java.lang.Integer">
+  	SELECT MAX(rr_step)+1 FROM review_rep WHERE rr_ref=#{rr_ref}
+  </select>
+  <insert id="insertRep">
+  	INSERT INTO review_rep(rr_no,r_no,id,rr_content,rr_regdate,rr_ref,rr_step) VALUES(#{rr_no},#{r_no},#{id},#{rr_content},SYSDATE,#{rr_ref},#{rr_step})
+  </insert>
+  <update id="update">
+  	UPDATE review SET c_no=#{c_no},r_title=#{r_title},r_content=#{r_content} WHERE r_no=#{r_no}
+  </update>
+  <delete id="deleteFileOne">
+  	DELETE FROM review_file WHERE rf_no=#{rf_no}
+  </delete>
+  
+  <!-- autosave용도 임시게시판 시작 -->
+  <select id="selectTemp" resultType="review_tempVo">
+  	SELECT * FROM review_temp WHERE id=#{id}
+  </select>
+  <insert id="insertTemp">
+  	INSERT INTO review_temp(id,r_title,c_no,r_content) VALUES(#{id},#{r_title},#{c_no},#{r_content})
+  </insert>
+  <update id="updateTemp">
+  	UPDATE review_temp SET r_title=#{r_title}, c_no=#{c_no}, r_content=#{r_content} WHERE id=#{id}
+  </update>
+  <delete id="deleteTemp">
+  	DELETE FROM review_temp WHERE id=#{id}
+  </delete>
+  <!-- autosave용도 임시게시판 끝 -->
+  
+  <delete id="deleteRepOne">
+  	DELETE FROM review_rep WHERE rr_no=#{rr_no}
+  </delete>
+  <update id="updateRep">
+  	UPDATE review_rep SET rr_content=#{rr_content},rr_regdate=SYSDATE WHERE rr_no=#{rr_no}
+  </update>
+  
+  <select id="selectOrderByHit" resultType="reviewVo"> <!-- 코스상세-코스후기 조회수 상위3개 -->
+  	SELECT ROWNUM,R_NO, C_NO, ID, R_TITLE, R_CONTENT, R_REGDATE, R_HIT, C_NAME, NICKNAME, RANK_ICON  
+  	FROM  (SELECT ROWNUM,
+  	R_NO, r.C_NO, r.ID, R_TITLE, R_CONTENT, R_REGDATE, R_HIT, C_NAME, NICKNAME, RANK_ICON  
+  	FROM review r, member m, rank k, course c WHERE r.c_no=#{c_no} AND c.c_no=r.c_no  AND r.ID=m.ID AND m.RANK_NAME=k.RANK_NAME
+  	ORDER BY r_hit DESC) WHERE ROWNUM &lt; 4
+  </select>
+  
+  
+  <update id="updateRasDelCourse"> <!--코스삭제로 인해 해당코스로 등록되어있던 게시물은 0번(선택안함)으로 변경 -->
+		UPDATE REVIEW SET C_NO = 0 WHERE C_NO = #{c_no}
+	</update>
+	
+	<!-- 로그기록중 댓글삭제 전 아이디 가져오기 -->
+	<select id="selectReviewRep" resultType="review_repVo">
+		SELECT ID FROM REVIEW_REP WHERE RR_NO = #{rr_no}
+	</select>
+</mapper>
